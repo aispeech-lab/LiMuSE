@@ -1,0 +1,88 @@
+#### LiMuSE Setting
+name: LiMuSE_pytorch
+# gpu_ids: [0,1,2,3,4,5,6,7]
+gpu_ids: [0,1]
+
+#### training settings: learning rate scheme, loss
+train:
+  optimizer: adam
+  min_lr: !!float 1e-8
+  patience: 1
+  factor: 0.5
+  logging_period: 200
+  clip_norm: 5
+  num_epochs: 100
+  checkpoint: LiMuSE_pytorch_test
+  QA_flag: False
+  ak: 8
+  bit: 3
+  temperature: 5 
+  log_path: /home/xujiaming/liuqinghua/code/LiMuSE_base/log
+  tensorboard: /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/tensorboard
+
+optimizer_kwargs:
+  lr: !!float 1e-3
+  weight_decay: !!float 1e-5
+
+#### network configure
+net_conf:
+  N: 128
+  K: 16   #16
+  group_size: 16
+  num_spks: 2
+  activate: sigmoid
+  causal: False
+  QA_flag: False
+  ak: 8
+
+#### resume model
+resume:
+  path: /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/LiMuSE_pytorch/best.pt
+  resume_state: False
+  resume_state_Q: False
+
+#### Dataset Configure
+# BATCH_SIZE
+BATCH_SIZE: 2
+TEST_BATCH_SIZE: 1
+
+REAL_TIME: False
+LOW_LATENCY: 100
+CUES:
+  - binaural
+  - azimuth
+  - visual
+  - voiceprint
+CUE_MISSING_TRAINING: False
+CUE_INFERING_TRAINING: True
+
+# data setting
+DATASET: multi_channel_grid
+DATA_PATH: /home/dataset/grid
+DATA_LIST_PATH:
+  - /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/grid/mix_2_spk_voice_multi_channel_train.txt
+  - /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/grid/mix_2_spk_voice_multi_channel_valid.txt
+  - /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/grid/mix_2_spk_voice_multi_channel_test.txt
+SPEAKER_LIST:
+  - lip_fea/train
+  - lip_fea/valid
+  - lip_fea/test
+SPEAKER_NUM: 21
+SPEAKER: 2
+CHANNEL: 2
+REVER: False
+NOISE: False
+NOISE_PATH:
+NOISE_DB_SPAN:
+  - 5
+  - 15
+MAX_LEN: 3
+FPS: 25
+WIN: 0.002
+FRAME_RATE: 16000
+AZIMUTH_NOISE: 0.1309
+REGISTER_VOICE_VAD: True
+PICKLE: True
+MASKING_DB_SPAN:
+  - -2.5
+  - 2.5
