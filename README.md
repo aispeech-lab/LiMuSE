@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pytorch implementation of our paper *LIMUSE: LIGHTWEIGHT MULTI-MODAL SPEAKER EXTRACTION*.
+Pytorch implementation of our paper [LIMUSE: LIGHTWEIGHT MULTI-MODAL SPEAKER EXTRACTION](https://arxiv.org/abs/2111.04063).
 
 LiMuSE explores group communication on a multi-modal speaker extraction model and further compresses the model size with quantization strategy.
 
@@ -79,7 +79,7 @@ If you find this repo helpful, please consider citing:
 @inproceedings{liu2021limuse,
   title={LIMUSE: LIGHTWEIGHT MULTI-MODAL SPEAKER EXTRACTION},
   author={Liu, Qinghua and Huang, Yating and Hao, Yunzhe and Xu, Jiaming and Xu, Bo},
-  booktitle={ArXiv},
+  booktitle={arXiv:2111.04063},
   year={2021},
 }
 ```
