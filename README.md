@@ -14,7 +14,7 @@ Our proposed model is a multi-steam architecture that takes multichannel mixture
 
 ## Datasets
 
-We evaluate our system on two-speaker speech separation and speaker extraction problems using [GRID](https://pubmed.ncbi.nlm.nih.gov/17139705/) dataset. The pretrained face embedding extraction network is trained on [LRW](https://ieeexplore.ieee.org/document/8099850) dataset and [MS-Celeb-1M](https://www.researchgate.net/publication/305683616_MS-Celeb-1M_A_Dataset_and_Benchmark_for_Large-Scale_Face_Recognition) dataset. And we use [SMS-WSJ](https://arxiv.org/abs/1910.13934) toolkit to obtain simulated anechoic dual-channel audio mixture. We place 2 microphones at the center of the room. The distance between microphones is 7 cm.
+We evaluate our system on two-speaker speech separation and speaker extraction problems using [GRID](http://spandh.dcs.shef.ac.uk/gridcorpus) dataset. The pretrained face embedding extraction network is trained on [LRW](https://www.robots.ox.ac.uk/~vgg/data/lip_reading/lrw1.html) dataset and [MS-Celeb-1M](https://www.microsoft.com/en-us/research/project/ms-celeb-1m-challenge-recognizing-one-million-celebrities-real-world/) dataset. And we use [SMS-WSJ](https://github.com/fgnt/sms_wsj) toolkit to obtain simulated anechoic dual-channel audio mixture. We place 2 microphones at the center of the room. The distance between microphones is 7 cm.
 
 
 
