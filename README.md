@@ -72,7 +72,7 @@ tensorboard --logdir ./tensorboard
 | TasNet  (dual-channel)   |  -   |    19.94    |     2.48     |       9.92       |  15.20   |
 |                          |  32  |    21.08    |     0.10     |       0.72       |   3.91   |
 |                          |  16  |    23.13    |     0.26     |       1.16       |   7.09   |
-| TasNet  (single-channel) |  -   |    13.15    |     2.48     |       9.92       |  15.20   |
+| TasNet  (single-channel) |  -   |    13.15    |     2.48     |       9.92       |  15.19   |
 
 ## Citations
 
