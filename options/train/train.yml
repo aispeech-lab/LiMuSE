@@ -1,24 +1,25 @@
 #### LiMuSE Setting
 name: LiMuSE_pytorch
-# gpu_ids: [0,1,2,3,4,5,6,7]
-gpu_ids: [0,1]
+gpu_ids: [0,1,2,3,4,5,6,7]
 
 #### training settings: learning rate scheme, loss
 train:
   optimizer: adam
   min_lr: !!float 1e-8
-  patience: 1
-  factor: 0.5
+  stop: 8
+  patience: 4
+  factor: 0.1
   logging_period: 200
   clip_norm: 5
-  num_epochs: 100
-  checkpoint: LiMuSE_pytorch_test
+  num_epochs: 50
+  checkpoint: LiMuSE_K_16_woQ
+  model_save_path: LiMuSE_K_16_woQ
   QA_flag: False
   ak: 8
   bit: 3
-  temperature: 5 
-  log_path: /home/xujiaming/liuqinghua/code/LiMuSE_base/log
-  tensorboard: /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/tensorboard
+  temperature: 20
+  log_path: ./log
+  tensorboard: ./tensorboard
 
 optimizer_kwargs:
   lr: !!float 1e-3
@@ -27,7 +28,9 @@ optimizer_kwargs:
 #### network configure
 net_conf:
   N: 128
-  K: 16   #16
+  hidden_dim: 256
+  K: 32
+  context_size: 32
   group_size: 16
   num_spks: 2
   activate: sigmoid
@@ -37,13 +40,13 @@ net_conf:
 
 #### resume model
 resume:
-  path: /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/LiMuSE_pytorch/best.pt
+  path: ./LiMuSE_K_16_woQ/best.pt
   resume_state: False
   resume_state_Q: False
 
 #### Dataset Configure
 # BATCH_SIZE
-BATCH_SIZE: 2
+BATCH_SIZE: 8
 TEST_BATCH_SIZE: 1
 
 REAL_TIME: False
@@ -58,15 +61,11 @@ CUE_INFERING_TRAINING: True
 
 # data setting
 DATASET: multi_channel_grid
-DATA_PATH: /home/dataset/grid
+DATA_PATH: ./MC_GRID
 DATA_LIST_PATH:
-  - /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/grid/mix_2_spk_voice_multi_channel_train.txt
-  - /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/grid/mix_2_spk_voice_multi_channel_valid.txt
-  - /home/xujiaming/liuqinghua/code/LiMuSE_pytorch/grid/mix_2_spk_voice_multi_channel_test.txt
-SPEAKER_LIST:
-  - lip_fea/train
-  - lip_fea/valid
-  - lip_fea/test
+  - ./grid/datalist_2mix_train.txt
+  - ./grid/datalist_2mix_valid.txt
+  - ./grid/datalist_2mix_test.txt
 SPEAKER_NUM: 21
 SPEAKER: 2
 CHANNEL: 2
