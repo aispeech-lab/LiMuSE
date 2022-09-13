@@ -1,12 +1,14 @@
+from turtle import done
 from numpy.core.fromnumeric import clip
 import torch
+import soundfile as sf
+import scipy.io.wavfile as wf
 import time
 import os
 import sys
 import numpy as np
 from torch import cuda
 from torch.autograd import Variable
-from utils import get_logger
 from utils import cal_using_wav
 from LiMuSE import check_parameters
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -77,8 +79,6 @@ class Trainer():
         self.model_save_path = model_save_path
 
         # build the logger object
-        self.logger = get_logger(
-            os.path.join(checkpoint, "trainer.log"), file=False)
         self.clip_norm = clip_norm
         self.logging_period = logging_period
         self.cur_epoch = 0  # current epoch
@@ -94,7 +94,7 @@ class Trainer():
                     "Could not find resume checkpoint: {}".format(resume))
             cpt = torch.load(resume['path'], map_location="cpu")
             self.cur_epoch = cpt["epoch"]
-            self.logger.info("Resume from checkpoint {}: epoch {:d}".format(
+            print("Resume from checkpoint {}: epoch {:d}".format(
                 resume['path'], self.cur_epoch))
             # load nnet
             net.load_state_dict(cpt["model_state_dict"])
@@ -114,16 +114,16 @@ class Trainer():
 
         # Reduce lr
         self.scheduler = ReduceLROnPlateau(
-            self.optimizer, mode='min', factor=0.1, patience=patience, verbose=True, min_lr=min_lr)
+            self.optimizer, mode='min', factor=factor, patience=patience, verbose=True, min_lr=min_lr)
 
         # logging
-        self.logger.info("Starting preparing model ............")
-        self.logger.info("Loading model to GPUs:{}, #param: {:.2f}M".format(
+        print("Starting preparing model ............")
+        print("Loading model to GPUs:{}, #param: {:.2f}M".format(
             gpuid, self.param))
         self.clip_norm = clip_norm
         # clip norm
         if clip_norm:
-            self.logger.info(
+            print(
                 "Gradient clipping by {}, default L2".format(clip_norm))
 
         # number of epoch
@@ -144,13 +144,14 @@ class Trainer():
                 count_targets = 0
                 for submodel in module_list:
                     for m in submodel.modules():
-                        if isinstance(m, nn.Conv1d) or isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose1d):
+                        if isinstance(m, nn.Conv1d) or isinstance(m, nn.Linear): # 20220726, @vyouman，去掉ConvTransposed1d
                             count_targets = count_targets + 1
                 return count_targets
 
             # Need to manually pass in quantized_module_lists
             quantized_module_lists = [self.net.encoder, self.net.voiceprint_encoder, self.net.visual_encoder, self.net.context_enc_1, self.net.context_enc_2,
                                       self.net.audio_block, self.net.fusion_block, self.net.context_dec_1, self.net.context_dec_2, self.net.gen_masks]
+
             count = count_modules(quantized_module_lists)
             for i in range(count):
                 self.alpha.append(Variable(torch.FloatTensor([0.0]).cuda(), requires_grad=True))
@@ -159,30 +160,26 @@ class Trainer():
 
             if self.bit == 1:
                 qw_values = [-1, 1]
-                numpy_file = os.path.join(log_path, 'bias.npy')
             else:
                 qw_values = list(range(-2**(self.bit-1)+1, 2**(self.bit-1)))
                 n = len(qw_values) - 1
-                numpy_file = os.path.join(log_path, 'bias.npy')
+                
+            numpy_file = os.path.join(log_path, 'bias.npy')
             if not os.path.exists(numpy_file):
+                print('Creating numpy file', numpy_file)
                 QW_biases = []
                 initialize_biases = True
             else:
+                print('Loading biases from numpy file', numpy_file)
                 initialize_biases = False
                 QW_biases = np.load(numpy_file)
-                # print('QW_bias', QW_biases)
-                # npy to list!!
                 QW_biases = list(QW_biases)
+                print('QW_bias of numpy file', QW_biases)
 
-            # print('QW_values {}'.format(qw_values))
-            # 
-            # if len(gpuid) > 1:
-            #     self.qua_op = QuaOp([self.model.module.ss_model.TCN], QW_biases, qw_values, initialize_biases=initialize_biases)
-            # else:
-            #     self.qua_op = QuaOp([self.model.ss_model.TCN], QW_biases, qw_values, initialize_biases=initialize_biases)
 
             assert quantized_module_lists is not None
-            self.qua_op = QuaOp(quantized_module_lists, QW_biases, qw_values, init_linear_bias=initialize_biases)
+            self.qua_op = QuaOp(quantized_module_lists, QW_biases=QW_biases, QW_values=qw_values, initialize_biases=initialize_biases, init_linear_bias=0) 
+
 
             if resume['resume_state_Q']:
                 cpt = torch.load(resume['path'], map_location="cpu")
@@ -191,7 +188,7 @@ class Trainer():
                 self.temperature = cpt['temperature']
                 self.updates = cpt['updates']
                 self.updates_eval = cpt['updates_eval']
-                self.logger.info("Resume temperature: {}".format(self.init_T))
+                print("Resume temperature: {}".format(self.init_T))
                 self.optimizer_alpha = self.create_optimizer(
                     optimizer, optimizer_kwargs, state=cpt["optim_state_dict_alpha"])
                 self.optimizer_beta = self.create_optimizer(
@@ -204,6 +201,7 @@ class Trainer():
                 # print('Save and freeze bias for quantization!')
                 numpy_file = os.path.join(log_path, 'bias.npy')
                 np.save(numpy_file, self.qua_op.QW_biases)
+                print('Saving the bias in', numpy_file)
         
             # quantized modules
             param_count = 0
@@ -211,7 +209,7 @@ class Trainer():
                 if param.requires_grad:
                     # print('Name, param', name, param.numel())
                     param_count += param.numel()
-            self.logger.info('parameter number: %d\n' % param_count)
+            print('parameter number: %d\n' % param_count)
 
             ssmodel_num = 0
             for submodel in quantized_module_lists:
@@ -220,15 +218,15 @@ class Trainer():
                     if param.requires_grad:
                         # print('Name, param', name, param.numel())
                         ssmodel_num += param.numel()
-            self.logger.info('ssmodel module parameters num:%d' % ssmodel_num)
-            self.logger.info('Quantized parameters count:%d' % self.qua_op.param_num)
-            self.logger.info('Quantized module count:%d' % count)
+            print('ssmodel module parameters num:%d' % ssmodel_num)
+            print('Quantized parameters count:%d' % self.qua_op.param_num)
+            print('Quantized module count:%d' % count)
             not_quantized_num = param_count - self.qua_op.param_num
             ideal_quantized_size = (not_quantized_num + count * 2) * 32 / 8 / 1024 / 1024 + self.qua_op.param_num * self.bit / 8 / 1024 / 1024 
             ideal_full_precision_model_size = param_count * 32 / 8 / 1024 / 1024
-            self.logger.info('ideal model size for full-precision: %.3f\n' % ideal_full_precision_model_size)
-            self.logger.info('Ideal Quantized model size:%.3f' %ideal_quantized_size)
-            self.logger.info('Ideal compression ratio %.3f' % (ideal_full_precision_model_size / ideal_quantized_size))
+            print('ideal model size for full-precision: %.3f\n' % ideal_full_precision_model_size)
+            print('Ideal Quantized model size:%.3f' %ideal_quantized_size)
+            print('Ideal compression ratio %.3f' % (ideal_full_precision_model_size / ideal_quantized_size))
 
 
 
@@ -245,10 +243,10 @@ class Trainer():
         if optimizer not in supported_optimizer:
             raise ValueError("Now only support optimizer {}".format(optimizer))
         opt = supported_optimizer[optimizer](self.net.parameters(), **kwargs)
-        self.logger.info("Create optimizer {0}: {1}".format(optimizer, kwargs))
+        print("Create optimizer {0}: {1}".format(optimizer, kwargs))
         if state is not None:
             opt.load_state_dict(state)
-            self.logger.info("Load optimizer state dict from checkpoint")
+            print("Load optimizer state dict from checkpoint")
         return opt
 
     def save_checkpoint(self, best=True):
@@ -290,13 +288,13 @@ class Trainer():
                          "{0}.pt".format(self.cur_epoch)))
     
     def save_model(self, best=True):
-        self.logger.info('Saved a better model ......')
+        print('Saved a better model ......')
         torch.save(self.net, 
                     os.path.join(self.model_save_path,
                         "{0}.pt".format("best_model" if best else "last_model")))
 
     def train(self, grid_samples):
-        self.logger.info('Training model ......')
+        print('Training model ......')
         self.net.train()
         step = 0
         losses = []
@@ -308,6 +306,7 @@ class Trainer():
                 self.curr_T = self.init_T + self.temperature
             else:
                 self.curr_T += self.temperature
+            print('The current temperature is', self.curr_T)
             
         while True:
             train_data = train_dataloader.__next__()
@@ -357,7 +356,7 @@ class Trainer():
             step += 1
             if step % 200 == 0:
                 avg_loss = sum(losses[-self.logging_period:]) / self.logging_period
-                self.logger.info('<epoch:{:3d}, iter:{:d}, lr:{:.3e}, loss:{:.3f}, batch:{:d} utterances> '.format(
+                print('<epoch:{:3d}, iter:{:d}, lr:{:.3e}, loss:{:.3f}, batch:{:d} utterances> '.format(
                     self.cur_epoch, step, self.optimizer.param_groups[0]['lr'], avg_loss, len(losses)))
 
             if self.QA_flag:
@@ -366,12 +365,12 @@ class Trainer():
 
         total_loss_avg = np.array(losses).mean()
         end = time.time()
-        self.logger.info('<epoch:{:3d}, lr:{:.3e}, loss:{:.3f}, Total time:{:.3f} min> '.format(
+        print('<epoch:{:3d}, lr:{:.3e}, loss:{:.3f}, Total time:{:.3f} min> '.format(
                 self.cur_epoch, self.optimizer.param_groups[0]['lr'], total_loss_avg, (end - start) / 60))
         return total_loss_avg
 
     def val(self, grid_samples):
-        self.logger.info('Validation model ......')
+        print('Validation model ......')
         self.net.eval()
         losses = []
         SDR_SUM = np.array([])
@@ -414,25 +413,25 @@ class Trainer():
                     SDR_SUM = np.append(SDR_SUM, sdr_aver_batch)
                     SDRi_SUM = np.append(SDRi_SUM, sdri_aver_batch)
                 except AssertionError as wrong_info:
-                    self.logger.info('Errors in calculating the SDR: %s' % wrong_info)
+                    print('Errors in calculating the SDR: %s' % wrong_info)
 
                 # quantization restore
                 if self.QA_flag:
                     self.qua_op.restore_params()
                 if step % 200 == 0:
                     avg_loss = sum(losses[-self.logging_period:]) / self.logging_period
-                    self.logger.info('<epoch:{:3d}, iter:{:d}, lr:{:.3e}, loss:{:.3f}, batch:{:d} utterances> '.format(
+                    print('<epoch:{:3d}, iter:{:d}, lr:{:.3e}, loss:{:.3f}, batch:{:d} utterances> '.format(
                         self.cur_epoch, step, self.optimizer.param_groups[0]['lr'], avg_loss, len(losses)))
             total_loss_avg = np.array(losses).mean()
         end = time.time()        
-        self.logger.info('<epoch:{:3d}, lr:{:.3e}, loss:{:.3f}, Total time:{:.3f} min> '.format(
+        print('<epoch:{:3d}, lr:{:.3e}, loss:{:.3f}, Total time:{:.3f} min> '.format(
             self.cur_epoch, self.optimizer.param_groups[0]['lr'], total_loss_avg, (end - start) / 60))
-        self.logger.info('SDR_aver_now: %f' % SDR_SUM.mean())
-        self.logger.info('SDRi_aver_now: %f' % SDRi_SUM.mean())               
+        print('SDR_aver_now: %f' % SDR_SUM.mean())
+        print('SDRi_aver_now: %f' % SDRi_SUM.mean())               
         return total_loss_avg
 
     def test(self, grid_samples):
-        self.logger.info('Testing model ......')
+        print('Testing model ......')
         self.net.eval()
         losses = []
         SDR_SUM = np.array([])
@@ -475,21 +474,21 @@ class Trainer():
                     SDR_SUM = np.append(SDR_SUM, sdr_aver_batch)
                     SDRi_SUM = np.append(SDRi_SUM, sdri_aver_batch)
                 except AssertionError as wrong_info:
-                    self.logger.info('Errors in calculating the SDR: %s' % wrong_info)
+                    print('Errors in calculating the SDR: %s' % wrong_info)
 
                 # quantization restore
                 if self.QA_flag:
                     self.qua_op.restore_params()
                 if step % 200 == 0:
                     avg_loss = sum(losses[-step:]) / step
-                    self.logger.info('<epoch:{:3d}, iter:{:d}, lr:{:.3e}, loss:{:.3f}, batch:{:d} utterances> '.format(
+                    print('<epoch:{:3d}, iter:{:d}, lr:{:.3e}, loss:{:.3f}, batch:{:d} utterances> '.format(
                         self.cur_epoch, step, self.optimizer.param_groups[0]['lr'], avg_loss, len(losses)))
             total_loss_avg = np.array(losses).mean()
         end = time.time()        
-        self.logger.info('<epoch:{:3d}, lr:{:.3e}, loss:{:.3f}, Total time:{:.3f} min> '.format(
+        print('<epoch:{:3d}, lr:{:.3e}, loss:{:.3f}, Total time:{:.3f} min> '.format(
             self.cur_epoch, self.optimizer.param_groups[0]['lr'], total_loss_avg, (end - start) / 60))
-        self.logger.info('SDR_aver_now: %f' % SDR_SUM.mean())
-        self.logger.info('SDRi_aver_now: %f' % SDRi_SUM.mean())               
+        print('SDR_aver_now: %f' % SDR_SUM.mean())
+        print('SDRi_aver_now: %f' % SDRi_SUM.mean())               
         return total_loss_avg
 
     def run(self, grid_samples):
@@ -501,8 +500,9 @@ class Trainer():
             self.save_checkpoint(best=False)
             self.save_model(best=False)
             val_loss = self.val(grid_samples)
+            # output = self.inference(grid_samples)
             best_loss = val_loss
-            self.logger.info("Starting epoch from {:d}, loss = {:.4f}".format(
+            print("Starting epoch from {:d}, loss = {:.4f}".format(
                 self.cur_epoch, best_loss))
             no_impr = 0
 
@@ -523,12 +523,31 @@ class Trainer():
                 self.reg_save_checkpoint()
                 if val_loss > best_loss:
                     no_impr += 1
-                    self.logger.info('no improvement, best loss: {:.4f}'.format(self.scheduler.best))
+                    print('no improvement, best loss: {:.4f}'.format(self.scheduler.best))
+
+                    # 20220804
+                    if no_impr == self.patience:
+                        # reset!            
+                        reset_path = os.path.join(self.checkpoint,"{0}.pt".format("best"))
+                        cpt = torch.load(reset_path, map_location="cuda:0")
+                        self.cur_epoch = cpt["epoch"]
+                        print("Reset from checkpoint {}: epoch {:d}".format(reset_path, self.cur_epoch))
+                        # load nnet
+                        self.net.load_state_dict(cpt["model_state_dict"])
+
+                        self.curr_T = cpt['T']
+                        self.alpha = cpt["alpha"]
+                        self.beta = cpt['beta']
+                        self.temperature = cpt['temperature']
+                        self.updates = cpt['updates']
+                        self.updates_eval = cpt['updates_eval']
+                        print("Reset temperature: {}".format(self.curr_T))  
+                        self.net.to(self.device) 
                 else:
                     best_loss = val_loss
                     no_impr = 0
                     self.save_checkpoint(best=True)
-                    self.logger.info('Epoch: {:d}, now best loss change: {:.4f}'.format(self.cur_epoch, best_loss))
+                    print('Epoch: {:d}, now best loss change: {:.4f}'.format(self.cur_epoch, best_loss))
                     self.save_model(best=True)
                 # schedule here
                 self.scheduler.step(val_loss)
@@ -537,9 +556,9 @@ class Trainer():
                 # save last checkpoint
                 self.save_checkpoint(best=False)
                 if no_impr == self.stop:
-                    self.logger.info(
+                    print(
                         "Stop training cause no impr for {:d} epochs".format(no_impr))
                     break
             test_loss = self.test(grid_samples)
-            self.logger.info("Training for {:d}/{:d} epoches done!".format(
+            print("Training for {:d}/{:d} epoches done!".format(
                 self.cur_epoch, self.num_epochs))
