@@ -6,23 +6,24 @@ gpu_ids: [0,1,2,3,4,5,6,7]
 train:
   optimizer: adam
   min_lr: !!float 1e-8
-  stop: 8
-  patience: 4
-  factor: 0.1
+  stop: 8 # 8
+  patience: 4 # 4
+  factor: 0.9 # 0.1
   logging_period: 200
   clip_norm: 5
-  num_epochs: 50
-  checkpoint: LiMuSE_K_16_woQ
-  model_save_path: LiMuSE_K_16_woQ
-  QA_flag: False
+  num_epochs: 100
+  checkpoint: LiMuSE
+  model_save_path: LiMuSE
+  QA_flag: True
   ak: 8
-  bit: 3
-  temperature: 20
+  # bit: 3
+  bit: 4
+  temperature: 5
   log_path: ./log
   tensorboard: ./tensorboard
 
 optimizer_kwargs:
-  lr: !!float 1e-3
+  lr: !!float 1e-4 # 1e-3
   weight_decay: !!float 1e-5
 
 #### network configure
@@ -31,22 +32,22 @@ net_conf:
   hidden_dim: 256
   K: 32
   context_size: 32
-  group_size: 16
+  group_size: 16 # 32
   num_spks: 2
   activate: sigmoid
-  causal: False
-  QA_flag: False
+  causal: False 
+  QA_flag: True # use the quantization technique or not?
   ak: 8
 
 #### resume model
 resume:
-  path: ./LiMuSE_K_16_woQ/best.pt
+  path: /path/to/best.pt
   resume_state: False
   resume_state_Q: False
 
 #### Dataset Configure
 # BATCH_SIZE
-BATCH_SIZE: 8
+BATCH_SIZE: 2
 TEST_BATCH_SIZE: 1
 
 REAL_TIME: False
@@ -61,11 +62,12 @@ CUE_INFERING_TRAINING: True
 
 # data setting
 DATASET: multi_channel_grid
-DATA_PATH: ./MC_GRID
+DATA_PATH: /path/to/MC_GRID
 DATA_LIST_PATH:
-  - ./grid/datalist_2mix_train.txt
-  - ./grid/datalist_2mix_valid.txt
-  - ./grid/datalist_2mix_test.txt
+  - /path/to/datalist_2mix_train.txt
+  - /path/to/datalist_2mix_valid.txt
+  - /path/to/datalist_2mix_test.txt
+VP_PKL_PATH: /path/to/grid_vp.pkl
 SPEAKER_NUM: 21
 SPEAKER: 2
 CHANNEL: 2
