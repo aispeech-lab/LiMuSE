@@ -1,8 +1,6 @@
 from turtle import done
 from numpy.core.fromnumeric import clip
 import torch
-import soundfile as sf
-import scipy.io.wavfile as wf
 import time
 import os
 import sys
