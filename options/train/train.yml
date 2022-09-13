@@ -47,7 +47,7 @@ resume:
 
 #### Dataset Configure
 # BATCH_SIZE
-BATCH_SIZE: 2
+BATCH_SIZE: 8
 TEST_BATCH_SIZE: 1
 
 REAL_TIME: False
