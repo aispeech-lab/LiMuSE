@@ -30,7 +30,7 @@ class PrepareMultiCueGridDataSamples(PrepareMultiCueDataSamples):
     def __init__(self, config):
         super(PrepareMultiCueGridDataSamples, self).__init__(config)
         # print('Initialize PrepareMultiCueGridDataSamples...')
-        with open('/mnt/lustre/xushuang4/dataset/grid_to_release/grid_vp.pkl', 'rb') as fi:
+        with open(config.VP_PKL_PATH, 'rb') as fi:
             self.vp_dict = pickle.load(fi)
         self.previous_batch_num = 0
 
@@ -49,7 +49,7 @@ class PrepareMultiCueGridDataSamples(PrepareMultiCueDataSamples):
             batch_size = self.config.TEST_BATCH_SIZE
             previous_batch_num = 0
         batch_num = int(sample_num / batch_size)
-        # evaluation_interval = min(5000, batch_num-previous_batch_num) if phase == 'train' else batch_num  # TODO
+        # evaluation_interval = min(5000, batch_num-previous_batch_num) if phase == 'train' else batch_num  
         evaluation_interval = batch_num
         last_batch_num = previous_batch_num + evaluation_interval
         for batch_idx in range(previous_batch_num, last_batch_num + 1):
