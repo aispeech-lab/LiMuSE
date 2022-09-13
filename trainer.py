@@ -142,7 +142,7 @@ class Trainer():
                 count_targets = 0
                 for submodel in module_list:
                     for m in submodel.modules():
-                        if isinstance(m, nn.Conv1d) or isinstance(m, nn.Linear): # 20220726, @vyouman，去掉ConvTransposed1d
+                        if isinstance(m, nn.Conv1d) or isinstance(m, nn.Linear): # 20220726, @vyouman
                             count_targets = count_targets + 1
                 return count_targets
 
