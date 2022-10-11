@@ -8,7 +8,7 @@
 
 📄**Dataset [[link](https://academictorrents.com/details/3cd18ff2d3eec881207dcc5ca5a2c3a2a3afe462)]**
 
-PyTorch implementation of our paper [LIMUSE: LIGHTWEIGHT MULTI-MODAL SPEAKER EXTRACTION](https://arxiv.org/abs/2111.04063).
+PyTorch implementation of our SLT2022 paper [LIMUSE: LIGHTWEIGHT MULTI-MODAL SPEAKER EXTRACTION](https://arxiv.org/abs/2111.04063).
 
 - In this paper, we propose a lightweight multi-modal speaker extraction framework, which incorporates multi-channel information, target speaker's visual feature and voiceprint as reference information and further apply Group Communication, Context Codec and an ultra-low bit quantization technology to reduce the model size and complexity while maintaining relatively high performance.
 
@@ -91,7 +91,7 @@ tensorboard --logdir ./tensorboard
   | P      | Kernel size in convolutional blocks             | 3     |
   | Ra   | Number of repeats in audio block                | 2     |
   | Rf   | Number of repeats in fusion block               | 1     |
-  | C      |  Context size (in frames)                       | 32    |
+  | S      |  Context size (in frames)                       | 32    |
   | K      |  Number of groups                               | -     |
   | Wq   |  Weight Quantization bit                        | 3     |
   | Aq   |  Activation Quantization bit                    | 8     |
@@ -122,10 +122,11 @@ tensorboard --logdir ./tensorboard
 If you find this repo helpful, please consider citing:
 
 ```
-@inproceedings{liu2021limuse,
+@article{liu2022limuse,
   title={LIMUSE: LIGHTWEIGHT MULTI-MODAL SPEAKER EXTRACTION},
   author={Liu, Qinghua and Huang, Yating and Hao, Yunzhe and Xu, Jiaming and Xu, Bo},
-  booktitle={ArXiv},
-  year={2021},
+  journal={IEEE SLT},
+  year={2022},
+  publisher={IEEE}
 }
 ```
